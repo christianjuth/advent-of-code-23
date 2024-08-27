@@ -1,0 +1,177 @@
+package main
+
+import (
+	"log"
+	"os"
+	"strconv"
+	"strings"
+  // "container/list"
+  "fmt"
+  "math"
+)
+
+// EDIT SETTINGS HERE
+var isPartTwo = true
+
+// END EDIT SETTINGS
+
+var globalMin int = math.MaxInt
+
+func resolveSeed(lines []string, seed int) int {
+  section := 1
+  sectionLineStart := 2
+  pos := seed
+
+  for i := sectionLineStart; i < len(lines); i++ {
+    line := lines[i]
+    if line == "" {
+      switch section {
+        case 1: {
+          // seed to soil
+          pos = processSection(lines, sectionLineStart, i, pos)
+        }
+        case 2: {
+          // soil to fertalizer
+          pos = processSection(lines, sectionLineStart, i, pos)
+        }
+        case 3: {
+          // fertalizer to water
+          pos = processSection(lines, sectionLineStart, i, pos)
+        }
+        case 4: {
+          // water to light
+          pos = processSection(lines, sectionLineStart, i, pos)
+        }
+        case 5: {
+          // light to temp
+          pos = processSection(lines, sectionLineStart, i, pos)
+        }
+        case 6: {
+          // temp to humidity
+          pos = processSection(lines, sectionLineStart, i, pos)
+        }
+        case 7: {
+          // humidity to location
+          pos = processSection(lines, sectionLineStart, i, pos)
+        }
+      }
+      
+      section++
+      sectionLineStart = i + 1
+      continue;
+    }
+  }
+
+  return pos
+}
+
+func parseSeeds(line string) []int {
+  line = strings.TrimSpace(line[7:])
+  seedStrs := strings.Split(line, " ")
+  seedInts := make([]int, 0, len(seedStrs))
+
+  for i, seed := range seedStrs {
+    num, err := strconv.Atoi(seed)
+    if err != nil {
+      println("failed to parse seed num", fmt.Sprint(i + 1))
+      seedInts = append(seedInts, 0)
+    } else {
+      seedInts = append(seedInts, num)
+    }
+  }
+ 
+  return seedInts
+}
+
+func parseSeedsPart2(lines []string) {
+  // first line contains seeds
+  line := lines[0]
+  line = strings.TrimSpace(line[7:])
+  seedStrs := strings.Split(line, " ")
+
+  for i := 0; i < len(seedStrs); i += 2 {
+    rangeStart, err1 := strconv.Atoi(seedStrs[i])
+    rangeLen, errr2 := strconv.Atoi(seedStrs[i+1])
+    if err1 != nil || errr2 != nil {
+      println("failed to parse seed num", fmt.Sprint(i + 1))
+    } else {
+      for j := 0; j < rangeLen; j++ {
+        num := rangeStart + j
+        newMin := resolveSeed(lines, num)
+
+        if newMin < globalMin { 
+          globalMin = newMin
+        } else {
+          break
+        }
+      }
+    }
+  }
+}
+
+var lineCache = make(map[string][]int, 10000)
+
+func processSectionLine(line string) (int, int, int) {
+  numberStrs := strings.Split(line, " ")
+
+  // if len(numberStrs) != 3 {
+  //   println("encountered empty line in section")
+  //   return 0,0,0
+  // }
+
+  item1, err1 := strconv.Atoi(numberStrs[0])
+  item2, err2 := strconv.Atoi(numberStrs[1])
+  item3, err3 := strconv.Atoi(numberStrs[2])
+
+  if err1 != nil || err2 != nil || err3 != nil {
+    println("encountered line in section with invalid int(s)")
+    return 0,0,0
+  }
+
+  lineCache[line] = []int{item1, item2, item3}
+
+  return item1, item2, item3
+}
+
+func processSection(lines []string, top int, bottom int, source int) int {
+  // +1 let's us skip the section header
+  // and get to the actual numbers
+  for i := top + 1; i < bottom; i++ {
+    destinationRangeStart, sourceRangeStart, rangeLength := processSectionLine(lines[i])
+
+    if source >= sourceRangeStart && source < sourceRangeStart + rangeLength {
+      diff := source - sourceRangeStart
+      return destinationRangeStart + diff
+    }
+  } 
+
+  return source
+}
+
+func lookup(dictionary map[int]int, source int) int {
+  val, ok := dictionary[source]
+  if ok {
+    return val
+  } else {
+    return source
+  }
+}
+
+func parse(file string, isPartTwo bool) {
+  // make sure file ends in new line
+  file += "\n"
+	lines := strings.Split(file, "\n")
+
+  parseSeedsPart2(lines)
+
+  println(globalMin)
+}
+
+func main() {
+  content, err := os.ReadFile("data.txt")
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  parse(string(content), isPartTwo)
+}
